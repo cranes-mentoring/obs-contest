@@ -40,9 +40,11 @@ func (r *UserRepository) GetUserInfo(ctx context.Context, username string) (*mod
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "Failed to execute query")
+
 		return nil, fmt.Errorf("failed to fetch user info: %w", err)
 	}
 
 	span.SetStatus(codes.Ok, "Query executed successfully")
+
 	return &user, nil
 }
