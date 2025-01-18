@@ -10,9 +10,9 @@ processors:
   batch:
   # https://github.com/open-telemetry/opentelemetry-collector/tree/main/processor/memorylimiterprocessor
   memory_limiter:
-    # 75% of total memory
-    limit_percentage: 75
     check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 15
 
 extensions:
   health_check: {}

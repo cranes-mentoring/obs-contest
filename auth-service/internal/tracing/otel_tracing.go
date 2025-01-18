@@ -6,7 +6,7 @@ import (
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
@@ -15,9 +15,9 @@ import (
 func InitTracer(ctx context.Context) func() {
 	exp, err := otlptrace.New(
 		ctx,
-		otlptracehttp.NewClient(
-			otlptracehttp.WithEndpoint("localhost:4318"),
-			otlptracehttp.WithInsecure(),
+		otlptracegrpc.NewClient(
+			otlptracegrpc.WithEndpoint("localhost:4317"),
+			otlptracegrpc.WithInsecure(),
 		),
 	)
 	if err != nil {
