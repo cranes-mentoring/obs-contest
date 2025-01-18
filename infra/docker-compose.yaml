@@ -1,0 +1,104 @@
+services:
+  kafka:
+    image: confluentinc/cp-kafka:7.4.1
+    environment:
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "1"
+      KAFKA_KRAFT_CLUSTER_ID: "jeager-kraft-cluster"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    command:
+      - sh
+      - -c
+      - |
+        # run for KRaft
+        /etc/confluent/docker/run & 
+        sleep 5
+        kafka-storage format --ignore-formatted -t $KAFKA_KRAFT_CLUSTER_ID -c /etc/kafka/kafka.properties
+        kafka-server-start /etc/kafka/kafka.properties
+    ports:
+      - "9092:9092"
+    networks:
+      - internal
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.46
+    environment:
+      COLLECTOR_ZIPKIN_HOST_PORT: ":9411"
+    ports:
+      - "16686:16686" # Jaeger UI http://localhost:16686
+      - "6831:6831/udp"
+      - "6832:6832/udp"
+      - "9411:9411"
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    networks:
+      - internal
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090" # Prometheus http://localhost:9090
+    depends_on:
+      - kafka
+      - jaeger
+      - otel-collector
+    command:
+      --config.file=/etc/prometheus/prometheus.yml
+    networks:
+      - internal
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    command: ['--config=/etc/otel-collector.yaml']
+    volumes:
+      - ./otel-collector.yaml:/etc/otel-collector.yaml
+    depends_on:
+      - jaeger
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: public
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: example_user
+      MONGO_INITDB_ROOT_PASSWORD: example_password
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - internal
+
+volumes:
+  postgres-data:
+  mongo-data:
+  otel-collector-config:
+    driver: local
+
+networks:
+  internal:
+    driver: bridge

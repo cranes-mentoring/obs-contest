@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "auth-service/proto";
+
+service AuthService {
+  rpc GetUserInfo(GetUserInfoRequest) returns (UserInfoResponse);
+}
+
+message GetUserInfoRequest {
+  string username = 1;
+}
+
+message UserInfoResponse {
+  string username = 1;
+  string login = 2;
+  string ip_address = 3;
+  string email = 4;
+  string device = 5;
+  string country = 6;
+  string name = 7;
+}
