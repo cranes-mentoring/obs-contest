@@ -1,8 +1,15 @@
 # obs-contest
 otel, jaeger, prometheus
 
+Links:
+Jaeger: http://localhost:16686/search
+
+---
 
 
+---
+
+# Useful
 
 OTEL getting started
 https://opentelemetry.io/blog/2024/getting-started-with-otelsql/
