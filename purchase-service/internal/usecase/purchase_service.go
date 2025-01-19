@@ -7,18 +7,20 @@ import (
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/entity"
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/model"
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/repository"
+	"go.uber.org/zap"
 
 	"github.com/google/uuid"
 )
 
 // purchaseService manages purchase operations using a PurchaseRepository.
 type purchaseService struct {
-	repo repository.PurchaseRepository
+	repo   repository.PurchaseRepository
+	logger *zap.Logger
 }
 
 // NewPurchaseService initializes a PurchaseUseCase with the provided PurchaseRepository implementation.
-func NewPurchaseService(repo repository.PurchaseRepository) PurchaseUseCase {
-	return &purchaseService{repo: repo}
+func NewPurchaseService(repo repository.PurchaseRepository, logger *zap.Logger) PurchaseUseCase {
+	return &purchaseService{repo: repo, logger: logger}
 }
 
 // ProcessPurchase handles a purchase request by validating input, storing data in the repository, and returning a response.
