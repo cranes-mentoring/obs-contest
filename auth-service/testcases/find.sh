@@ -1,1 +1,1 @@
-grpcurl -plaintext -d '{"username": "test_user"}' localhost:50051 auth.AuthService/GetUserInfo
+grpcurl -plaintext -d '{"username": "first_user"}' localhost:50051 auth.AuthService/GetUserInfo

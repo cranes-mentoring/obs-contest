@@ -14,7 +14,5 @@ func InitDB(ctx context.Context, connStr string) *pgxpool.Pool {
 		log.Fatalf("Unable to connect to database: %v", err)
 	}
 
-	log.Println("Connected to PostgreSQL")
-
 	return dbpool
 }

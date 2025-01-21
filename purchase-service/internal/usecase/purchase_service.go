@@ -1,15 +1,19 @@
 package usecase
 
 import (
-	"errors"
+	"context"
 	"time"
 
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/entity"
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/model"
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/repository"
-	"go.uber.org/zap"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/google/uuid"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.uber.org/zap"
 )
 
 // purchaseService manages purchase operations using a PurchaseRepository.
@@ -24,13 +28,9 @@ func NewPurchaseService(repo repository.PurchaseRepository, logger *zap.Logger) 
 }
 
 // ProcessPurchase handles a purchase request by validating input, storing data in the repository, and returning a response.
-func (s *purchaseService) ProcessPurchase(request model.PurchaseRequest) (model.PurchaseResponse, error) {
-	if request.Amount <= 0 {
-		return model.PurchaseResponse{}, errors.New("invalid amount")
-	}
-	if request.Currency == "" {
-		return model.PurchaseResponse{}, errors.New("currency is required")
-	}
+func (s *purchaseService) ProcessPurchase(ctx context.Context, request model.PurchaseRequest) (model.PurchaseResponse, error) {
+	ctx, span := s.handleTracing(ctx, request.UserID)
+	defer span.End()
 
 	purchase := entity.Purchase{
 		ID:             uuid.New(),
@@ -48,9 +48,14 @@ func (s *purchaseService) ProcessPurchase(request model.PurchaseRequest) (model.
 		UpdatedAt:      time.Now(),
 	}
 
-	if err := s.repo.SavePurchase(purchase); err != nil {
+	if err := s.repo.SavePurchase(ctx, purchase); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "Failed to save purchase")
+
 		return model.PurchaseResponse{}, err
 	}
+
+	span.SetStatus(codes.Ok, "Purchase saved successfully")
 
 	response := model.PurchaseResponse{
 		TransactionID: purchase.ID.String(),
@@ -59,4 +64,14 @@ func (s *purchaseService) ProcessPurchase(request model.PurchaseRequest) (model.
 	}
 
 	return response, nil
+}
+
+func (r *purchaseService) handleTracing(ctx context.Context, userID uuid.UUID) (context.Context, trace.Span) {
+	tracer := otel.Tracer("purchase-service")
+
+	ctx, span := tracer.Start(ctx, "ProcessPurchase", trace.WithAttributes(
+		attribute.String("user_id", userID.String()),
+	))
+
+	return ctx, span
 }

@@ -10,6 +10,10 @@ scrape_configs:
     static_configs:
       - targets: ['jaeger:16686']
 
+  - job_name: 'otel-collector'
+    static_configs:
+      - targets: ['otel-collector:16686']
+
   - job_name: 'report-service'
     static_configs:
       - targets: ['host.docker.internal:2112'] # todo: host

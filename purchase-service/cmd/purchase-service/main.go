@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -15,96 +16,99 @@ import (
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/repository"
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/tracing"
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/usecase"
+	"go.uber.org/zap"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// todo: move to cfg
+const (
+	mongoURI    = "mongodb://localhost:27017"
+	user        = "example_user"
+	pass        = "example_password"
+	dbName      = "project_one"
+	timeout     = 5 * time.Second
+	maxPoolSize = 10
+	minPoolSize = 1
+)
+
 func main() {
-	// Global context and shutdown setup
 	ctx := context.Background()
 
-	// Set up logging
 	logging.SetupLogger()
 	logger := logging.Logger
-	defer logger.Sync()
+	defer func(logger *zap.Logger) {
+		err := logger.Sync()
+		if err != nil {
+			log.Fatal("Failed to sync logger:", err)
+		}
+	}(logger)
 
-	// Initialize tracing
 	shutdownTracer := tracing.InitTracer(ctx)
 	defer shutdownTracer()
 
-	// MongoDB connection setup
 	clientOptions := options.Client().
-		ApplyURI("mongodb://localhost:27017").
-		SetAuth(options.Credential{Username: "example_user", Password: "example_password"}).
-		SetMaxPoolSize(10).
-		SetMinPoolSize(1).
-		SetConnectTimeout(10 * time.Second).
-		SetServerSelectionTimeout(10 * time.Second).
-		SetSocketTimeout(10 * time.Second)
+		ApplyURI(mongoURI).
+		SetAuth(options.Credential{Username: user, Password: pass}).
+		SetMaxPoolSize(maxPoolSize).
+		SetMinPoolSize(minPoolSize).
+		SetConnectTimeout(timeout).
+		SetServerSelectionTimeout(timeout).
+		SetSocketTimeout(timeout)
 
 	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
-		log.Fatal("Failed to connect to MongoDB:", err)
+		logger.Fatal("Failed to connect to MongoDB", zap.Error(err))
 	}
 
 	mongoCtx, mongoCancel := context.WithTimeout(ctx, 5*time.Second)
 	defer mongoCancel()
 
-	// Verify connection to MongoDB
 	if err := client.Ping(mongoCtx, nil); err != nil {
-		log.Fatal("Failed to ping MongoDB:", err)
+		logger.Fatal("Failed to ping MongoDB", zap.String("error", err.Error()))
 	}
-	log.Println("Connected to MongoDB!")
+	logger.Info("Connected to MongoDB!")
 
-	db := client.Database("project_one")
+	db := client.Database(dbName)
 
-	// Initialize business logic
 	repo := repository.NewPurchaseRepository(db, logger)
 	uc := usecase.NewPurchaseService(repo, logger)
 	h := handler.NewPurchaseHandler(uc)
 
-	// Create HTTP server
 	server := &http.Server{
-		Addr: ":8080",
+		Addr: ":38080",
 	}
 
-	// HTTP endpoint setup
 	http.HandleFunc("/api/v1/purchases", h.HandlePurchase)
 
-	// Start server in a goroutine
 	go func() {
-		log.Println("Server running at :8080")
-		if err := server.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf("HTTP server ListenAndServe error: %v", err)
+		logger.Info("Server running.")
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			logger.Fatal("HTTP server ListenAndServe error", zap.Error(err))
 		}
 	}()
 
-	// Graceful shutdown setup
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	<-stop // Wait for a termination signal
-	log.Println("Shutdown signal received")
+	<-stop
+	logger.Info("Shutdown signal received")
 
-	// Timeout context for shutdown
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, shutdownCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer shutdownCancel()
 
-	// Shutdown HTTP server
-	log.Println("Shutting down HTTP server...")
+	logger.Info("Shutting down HTTP server...")
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Fatalf("HTTP server Shutdown error: %v", err)
+		logger.Fatal("HTTP server Shutdown error", zap.Error(err))
 	}
 
-	// Close MongoDB connection
-	log.Println("Closing MongoDB connection...")
+	logger.Info("Closing MongoDB connection...")
 	if err := client.Disconnect(shutdownCtx); err != nil {
-		log.Fatalf("MongoDB Disconnect error: %v", err)
+		logger.Fatal("MongoDB Disconnect error", zap.Error(err))
 	}
 
-	// Stop tracer if necessary
 	shutdownTracer()
 
-	log.Println("Server shut down gracefully")
+	logger.Info("Server shut down gracefully")
 }

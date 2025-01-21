@@ -1,4 +1,4 @@
-curl -X POST http://localhost:8080/api/v1/purchases \
+curl -X POST http://localhost:38080/api/v1/purchases \
 -H "Content-Type: application/json" \
 -H "Authorization: Bearer <your_oauth2_token>" \
 -d '{
@@ -6,7 +6,7 @@ curl -X POST http://localhost:8080/api/v1/purchases \
   "amount": 100.50,
   "currency": "USD",
   "payment_method": "credit_card",
-  "card_holder_name": "John Doe",
+  "card_holder_name": "John Doessss",
   "card_number": "4111111111111111",
   "card_expiry": "12/25",
   "card_cvc": "123",

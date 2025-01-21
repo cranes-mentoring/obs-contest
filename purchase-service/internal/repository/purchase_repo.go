@@ -2,7 +2,6 @@ package repository
 
 import (
 	"context"
-	"time"
 
 	"github.com/cranes-mentoring/obs-contest/purchase-service/internal/entity"
 	"go.opentelemetry.io/otel"
@@ -15,7 +14,7 @@ import (
 )
 
 type PurchaseRepository interface {
-	SavePurchase(purchase entity.Purchase) error
+	SavePurchase(ctx context.Context, purchase entity.Purchase) error
 }
 
 type mongoPurchaseRepo struct {
@@ -30,10 +29,7 @@ func NewPurchaseRepository(db *mongo.Database, logger *zap.Logger) PurchaseRepos
 	}
 }
 
-func (r *mongoPurchaseRepo) SavePurchase(purchase entity.Purchase) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
+func (r *mongoPurchaseRepo) SavePurchase(ctx context.Context, purchase entity.Purchase) error {
 	span := r.handleTracing(ctx, purchase)
 	defer span.End()
 
@@ -51,21 +47,19 @@ func (r *mongoPurchaseRepo) SavePurchase(purchase entity.Purchase) error {
 		"transaction_at":   purchase.TransactionAt,
 		"created_at":       purchase.CreatedAt,
 		"updated_at":       purchase.UpdatedAt,
+		"trace_id":         span.SpanContext().TraceID().String(),
 	})
 
 	return err
 }
 
 func (r *mongoPurchaseRepo) handleTracing(ctx context.Context, purchase entity.Purchase) trace.Span {
-	tracer := otel.Tracer("purchase-repository")
+	tracer := otel.Tracer("purchase-service")
 
 	_, span := tracer.Start(ctx, "SavePurchase", trace.WithAttributes(
 		attribute.String("db.system", "mongodb"),
-		attribute.String("db.name", r.collection.Database().Name()),
 		attribute.String("db.collection", r.collection.Name()),
 		attribute.String("purchase.user_id", purchase.UserID.String()),
-		attribute.Float64("purchase.amount", purchase.Amount),
-		attribute.String("purchase.currency", purchase.Currency),
 	))
 
 	return span

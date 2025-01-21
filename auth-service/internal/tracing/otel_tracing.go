@@ -12,11 +12,13 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
+const endpoint = "localhost:4317" // todo: to conf
+
 func InitTracer(ctx context.Context) func() {
 	exp, err := otlptrace.New(
 		ctx,
 		otlptracegrpc.NewClient(
-			otlptracegrpc.WithEndpoint("localhost:4317"),
+			otlptracegrpc.WithEndpoint(endpoint),
 			otlptracegrpc.WithInsecure(),
 		),
 	)
@@ -26,7 +28,7 @@ func InitTracer(ctx context.Context) func() {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("auth-service"),
+			semconv.ServiceNameKey.String("auth-service"), // todo: to config
 			semconv.ServiceVersionKey.String("1.0.0"),
 			semconv.DeploymentEnvironmentKey.String("stg"),
 		),

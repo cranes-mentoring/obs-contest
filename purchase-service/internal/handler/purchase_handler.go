@@ -17,6 +17,8 @@ func NewPurchaseHandler(uc usecase.PurchaseUseCase) *PurchaseHandler {
 }
 
 func (h *PurchaseHandler) HandlePurchase(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	var request model.PurchaseRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -24,7 +26,7 @@ func (h *PurchaseHandler) HandlePurchase(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	response, err := h.UseCase.ProcessPurchase(request)
+	response, err := h.UseCase.ProcessPurchase(ctx, request)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 

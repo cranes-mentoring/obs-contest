@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -51,7 +50,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 
 	go func() {
-		log.Printf("Starting gRPC server on port 50051...")
+		logger.Info("Starting gRPC server on port 50051...")
 		if err := server.Serve(listener); err != nil {
 			logger.Fatal("failed to serve", zap.Error(err))
 		}
