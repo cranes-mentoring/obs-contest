@@ -16,7 +16,7 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - kafka-1
+      - kafka
       - jaeger
       - otel-collector
     command:
@@ -63,48 +63,36 @@ services:
     networks:
       - internal
 
-  controller-1:
-    image: confluentinc/cp-server:latest
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
     ports:
-      - 19092:9092
-      - 19093:9093
-      - 9012:9012
+      - "9092:9092"
+      - "9093:9093"
     environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: 'controller'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:9093'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_LISTENERS: 'CONTROLLER://controller-1:9093'
-      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: localhost:19092
-    networks:
-      - internal
-
-  kafka-1:
-    image: confluentinc/cp-server:latest
-    ports:
-      - 29092:9092
-      - 29093:9093
-      - 9013:9013
-    environment:
-      KAFKA_NODE_ID: 2
-      KAFKA_PROCESS_ROLES: 'broker'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@controller-1:9093'
-      KAFKA_LISTENERS: 'PLAINTEXT://kafka-1:9092'
-      KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:29092
-      KAFKA_METRIC_REPORTERS: io.confluent.metrics.reporter.ConfluentMetricsReporter
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      CLUSTER_ID: '4L6g3nShT-eMCtK--X86sw'
-      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: localhost:29092
-    depends_on:
-      - controller-1
+      KAFKA_KRAFT_MODE: "true"  # This enables KRaft mode in Kafka.
+      KAFKA_PROCESS_ROLES: controller,broker  # Kafka acts as both broker and controller.
+      KAFKA_NODE_ID: 1  # A unique ID for this Kafka instance.
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"  # Defines the controller voters.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data  # Where Kafka stores its logs.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Kafka will automatically create topics if needed.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  # Since we’re running one broker, one replica is enough.
+      KAFKA_LOG_RETENTION_HOURS: 168  # Keep logs for 7 days.
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0  # No delay for consumer rebalancing.
+      CLUSTER_ID: "Mk3OEYBSD34fcwNTJENDM2Qk"  # A unique ID for the Kafka cluster.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/var/lib/kafka/data  # Store Kafka logs on your local mach
     networks:
       - internal
 
   debezium:
-    image: debezium/connect:2.2
+    image: debezium/connect:3.0.0.Final
     platform: linux/amd64
     environment:
       BOOTSTRAP_SERVERS: "kafka:9092"
@@ -116,7 +104,7 @@ services:
       VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
       CONNECT_REST_ADVERTISED_HOST_NAME: "debezium"
     depends_on:
-      - kafka-1
+      - kafka
     ports:
       - "8083:8083"
     networks:

@@ -28,3 +28,7 @@ https://github.com/grpc/grpc-go/blob/master/examples/features/reflection/server/
 
 Go Reflection
 https://grpc.io/docs/guides/reflection/
+
+---
+kafka
+https://dev.to/deeshath/apache-kafka-kraft-mode-setup-5nj
