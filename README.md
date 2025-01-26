@@ -32,3 +32,6 @@ https://grpc.io/docs/guides/reflection/
 ---
 kafka
 https://dev.to/deeshath/apache-kafka-kraft-mode-setup-5nj
+
+Debez
+https://debezium.io/documentation/reference/stable/connectors/mongodb.html
