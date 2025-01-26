@@ -6,6 +6,7 @@ curl -X POST -H "Content-Type: application/json" --data '{
     "mongodb.user": "example_user",
     "mongodb.password": "example_password",
     "mongodb.name": "project_one",
+    "mongodb.servers.name": "mongo",
     "database.include.list": "purchase",
     "collection.include.list": "project_one.purchase",
     "tasks.max": "1",
