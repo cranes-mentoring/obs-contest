@@ -24,11 +24,11 @@ import (
 
 // todo: move to cfg
 const (
-	mongoURI    = "mongodb://localhost:27017"
+	mongoURI    = "mongodb://localhost:27017/?replicaSet=rs0"
 	user        = "example_user"
 	pass        = "example_password"
 	dbName      = "project_one"
-	timeout     = 5 * time.Second
+	timeout     = 30 * time.Second
 	maxPoolSize = 10
 	minPoolSize = 1
 )
@@ -62,7 +62,7 @@ func main() {
 		logger.Fatal("Failed to connect to MongoDB", zap.Error(err))
 	}
 
-	mongoCtx, mongoCancel := context.WithTimeout(ctx, 5*time.Second)
+	mongoCtx, mongoCancel := context.WithTimeout(ctx, 10*time.Second)
 	defer mongoCancel()
 
 	if err := client.Ping(mongoCtx, nil); err != nil {

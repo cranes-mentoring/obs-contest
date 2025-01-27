@@ -35,3 +35,5 @@ https://dev.to/deeshath/apache-kafka-kraft-mode-setup-5nj
 
 Debez
 https://debezium.io/documentation/reference/stable/connectors/mongodb.html
+
+https://github.com/debezium/debezium-examples/blob/main/unwrap-mongodb-smt/docker-compose.yaml
