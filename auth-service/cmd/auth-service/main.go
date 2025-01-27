@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-const connStr = "postgres://postgres:postgres@localhost:5432/public"
+const connStr = "postgres://postgres:postgres@postgres:5432/public"
 
 func main() {
 	ctx := context.Background()

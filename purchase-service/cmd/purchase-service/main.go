@@ -24,9 +24,9 @@ import (
 
 // todo: move to cfg
 const (
-	mongoURI    = "mongodb://localhost:27017/?replicaSet=rs0"
-	user        = "example_user"
-	pass        = "example_password"
+	mongoURI    = "mongodb://mongo1:27017,mongo2:27017,mongo3:27017/?replicaSet=rs0"
+	user        = "root"
+	pass        = "example"
 	dbName      = "project_one"
 	timeout     = 30 * time.Second
 	maxPoolSize = 10

@@ -50,54 +50,50 @@ services:
     networks:
       - internal
 
-  mongo-primary:
+  mongo1:
     image: mongo:6.0
-    container_name: mongo-primary
+    container_name: mongo1
+    networks:
+      - internal
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: example_user
-      MONGO_INITDB_ROOT_PASSWORD: example_password
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    command: >
+      mongod --replSet rs0 --auth --keyFile /etc/mongo-keyfile --bind_ip_all
     volumes:
-      - mongo-primary-data:/data/db
-      - ./mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+      - .mongo-keyfile/mongo-keyfile:/etc/mongo-keyfile:ro
+
+  mongo2:
+    image: mongo:6.0
+    container_name: mongo2
     networks:
       - internal
-    command: >
-      bash -c "mongod --replSet rs0 --bind_ip_all --port 27017"
-
-
-  mongo-secondary:
-    image: mongo:6.0
-    container_name: mongo-secondary
     ports:
       - "27018:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: example_user
-      MONGO_INITDB_ROOT_PASSWORD: example_password
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    command: >
+      mongod --replSet rs0 --auth --keyFile /etc/mongo-keyfile --bind_ip_all
     volumes:
-      - mongo-secondary-data:/data/db
+      - .mongo-keyfile/mongo-keyfile:/etc/mongo-keyfile:ro
+
+  mongo3:
+    image: mongo:6.0
+    container_name: mongo3
     networks:
       - internal
-    command: >
-      bash -c "mongod --replSet rs0 --bind_ip_all --port 27017"      
-
-
-  mongo-secondary-2:
-    image: mongo:6.0
-    container_name: mongo-secondary-2
     ports:
       - "27019:27017"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: example_user
-      MONGO_INITDB_ROOT_PASSWORD: example_password
-    volumes:
-      - mongo-secondary-2-data:/data/db
-    networks:
-      - internal
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
     command: >
-      bash -c "mongod --replSet rs0 --bind_ip_all --port 27017"
-
+      mongod --replSet rs0 --auth --keyFile /etc/mongo-keyfile --bind_ip_all
+    volumes:
+      - .mongo-keyfile/mongo-keyfile:/etc/mongo-keyfile:ro
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -159,15 +155,49 @@ services:
     networks:
       - internal
 
+  purchase-service:
+    container_name: purchase-service
+    image: purchase-service:latest
+    build:
+      context: ../purchase-service/.
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    networks:
+      - internal
+    ports:
+      - "8080:8080"
+
+  auth-service:
+    container_name: auth-service
+    image: auth-service:latest
+    build:
+      context: ../auth-service/.
+      dockerfile: Dockerfile
+    networks:
+      - internal
+    ports:
+      - "50051:50051"
+
+  purchase-processor:
+    container_name: purchase-processor
+    image: purchase-processor:latest
+    build:
+      context: ../purchase-processor/.
+      dockerfile: Dockerfile
+    networks:
+      - internal
+    ports:
+      - "48080:48080"
+
 volumes:
   postgres-data:
   mongo-data:
   otel-collector-config:
     driver: local
   kafka-data:
-  mongo-primary-data:
-  mongo-secondary-data:
-  mongo-secondary-2-data:
 
 networks:
   internal:

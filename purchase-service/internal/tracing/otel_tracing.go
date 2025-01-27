@@ -16,7 +16,7 @@ func InitTracer(ctx context.Context) func() {
 	exp, err := otlptrace.New(
 		ctx,
 		otlptracegrpc.NewClient(
-			otlptracegrpc.WithEndpoint("localhost:4317"),
+			otlptracegrpc.WithEndpoint("otel-collector:4317"),
 			otlptracegrpc.WithInsecure(),
 		),
 	)

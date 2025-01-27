@@ -26,7 +26,7 @@ func InitTracer(ctx context.Context) func() {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("auth-service"), // todo: to config
+			semconv.ServiceNameKey.String("purchase-service"), // todo: to config
 			semconv.ServiceVersionKey.String("1.0.0"),
 			semconv.DeploymentEnvironmentKey.String("stg"),
 		),
