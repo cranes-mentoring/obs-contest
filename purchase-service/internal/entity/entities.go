@@ -10,6 +10,7 @@ import (
 type Purchase struct {
 	ID             uuid.UUID `json:"id"`
 	UserID         uuid.UUID `json:"user_id"`
+	Username       string    `json:"username"`
 	Amount         float64   `json:"amount"`
 	Currency       string    `json:"currency"`
 	PaymentMethod  string    `json:"payment_method"`

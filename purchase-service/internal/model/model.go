@@ -9,6 +9,7 @@ import (
 // PurchaseRequest represents the data required to initiate a purchase transaction by a user.
 type PurchaseRequest struct {
 	UserID         uuid.UUID `json:"user_id"`
+	Username       string    `json:"username"` // todo: read from token
 	Amount         float64   `json:"amount"`
 	Currency       string    `json:"currency"`
 	PaymentMethod  string    `json:"payment_method"`

@@ -9,6 +9,7 @@ import (
 	pb "github.com/cranes-mentoring/obs-contest/auth-service/generated/auth-service/proto"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/db"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/logging"
+	"github.com/cranes-mentoring/obs-contest/auth-service/internal/middleware"
 	auth_repo "github.com/cranes-mentoring/obs-contest/auth-service/internal/repository/auth"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/service/auth"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/tracing"
@@ -36,7 +37,10 @@ func main() {
 	authRepo := auth_repo.NewUserRepository(dbpool)
 	authService := auth.NewUserService(authRepo, logger)
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(
+		grpc.UnaryInterceptor(middleware.ServerInterceptor()),
+	)
+
 	pb.RegisterAuthServiceServer(server, authService)
 
 	reflection.Register(server)

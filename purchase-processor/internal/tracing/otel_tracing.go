@@ -3,6 +3,7 @@ package tracing
 import (
 	"context"
 	"log"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -26,7 +27,7 @@ func InitTracer(ctx context.Context) func() {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("purchase-service"), // todo: to config
+			semconv.ServiceNameKey.String("purchase-processor"), // todo: to config
 			semconv.ServiceVersionKey.String("1.0.0"),
 			semconv.DeploymentEnvironmentKey.String("stg"),
 		),
@@ -36,11 +37,18 @@ func InitTracer(ctx context.Context) func() {
 	}
 
 	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
+		trace.WithBatcher(exp,
+			trace.WithMaxExportBatchSize(100),
+			trace.WithBatchTimeout(5*time.Second),
+			trace.WithExportTimeout(10*time.Second),
+		),
 		trace.WithResource(res),
 	)
 
 	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		log.Printf("OpenTelemetry error: %v", err)
+	}))
 
 	return func() {
 		err := tp.Shutdown(ctx)

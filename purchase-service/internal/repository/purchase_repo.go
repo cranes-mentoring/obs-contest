@@ -36,6 +36,7 @@ func (r *mongoPurchaseRepo) SavePurchase(ctx context.Context, purchase entity.Pu
 	_, err := r.collection.InsertOne(ctx, bson.M{
 		"_id":              purchase.ID,
 		"user_id":          purchase.UserID,
+		"username":         purchase.Username,
 		"amount":           purchase.Amount,
 		"currency":         purchase.Currency,
 		"payment_method":   purchase.PaymentMethod,

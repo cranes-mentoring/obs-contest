@@ -7,7 +7,7 @@ PROTOC_GEN_GO_GRPC = $(shell which protoc-gen-go-grpc)
 PROTO_FILES = auth-service.proto
 
 MIGRATION_DIR = ./db/migrations
-DATABASE_URL = postgres://postgres:postgres@localhost:5432/public?sslmode=disable
+DATABASE_URL = postgres://postgres:postgres@0.0.0.0:5432/public?sslmode=disable
 
 .PHONY: proto
 proto:

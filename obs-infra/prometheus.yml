@@ -14,10 +14,14 @@ scrape_configs:
     static_configs:
       - targets: ['otel-collector:16686']
 
-  - job_name: 'report-service'
+  - job_name: 'auth-service'
     static_configs:
-      - targets: ['host.docker.internal:2112'] # todo: host
+      - targets: ['auth-service:8082']
 
   - job_name: 'processor-service'
     static_configs:
-      - targets: ['host.docker.internal:2113'] # todo: host
+      - targets: ['processor-service:8082']
+
+  - job_name: 'purchase-service'
+    static_configs:
+      - targets: ['purchase-service:8082']

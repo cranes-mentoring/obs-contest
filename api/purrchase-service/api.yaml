@@ -31,6 +31,9 @@ components:
         user_id:
           type: string
           format: uuid
+        username:
+          type: string
+          format: uuid
         amount:
           type: number
         currency:

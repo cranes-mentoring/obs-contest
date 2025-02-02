@@ -3,6 +3,7 @@ wget http://localhost:38080/api/v1/purchases \
                                        --header="Authorization: Bearer <your_oauth2_token>" \
                                        --post-data='{
                                          "user_id": "4f8e3c79-9a0f-4a02-823b-9c6a21f46ad8",
+                                         "username": "first_user",
                                          "amount": 100.50,
                                          "currency": "USD",
                                          "payment_method": "credit_card",

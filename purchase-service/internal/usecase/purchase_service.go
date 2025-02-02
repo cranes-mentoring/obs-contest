@@ -35,6 +35,7 @@ func (s *purchaseService) ProcessPurchase(ctx context.Context, request model.Pur
 	purchase := entity.Purchase{
 		ID:             uuid.New(),
 		UserID:         request.UserID,
+		Username:       request.Username,
 		Amount:         request.Amount,
 		Currency:       request.Currency,
 		PaymentMethod:  request.PaymentMethod,

@@ -1,4 +1,4 @@
-curl -X POST http://localhost:38080/api/v1/purchases \
+curl -X POST http://0.0.0.0:38080/api/v1/purchases \
 -H "Content-Type: application/json" \
 -H "Authorization: Bearer <your_oauth2_token>" \
 -d '{

@@ -10,6 +10,7 @@ import (
 
 	"github.com/IBM/sarama"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/logging"
+	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/middleware"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/service"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/tracing"
 	"google.golang.org/grpc"
@@ -28,7 +29,7 @@ func main() {
 	shutdown := tracing.InitTracer(ctx)
 	defer shutdown()
 
-	brokers := strings.Split(getEnv("KAFKA_BROKERS", "kafka:9092"), ",")
+	brokers := strings.Split(getEnv("KAFKA_BROKERS", "0.0.0.0:9092"), ",")
 	topic := getEnv("KAFKA_TOPIC", "purchases")
 	group := getEnv("KAFKA_GROUP", "purchase-processor-group")
 
@@ -47,7 +48,11 @@ func main() {
 		}
 	}()
 
-	conn, err := grpc.NewClient("auth-service:50051", grpc.WithInsecure())
+	conn, err := grpc.NewClient(
+		"auth-service:50051",
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(middleware.ClientInterceptor()),
+	)
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
