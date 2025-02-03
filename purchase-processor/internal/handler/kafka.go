@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/IBM/sarama"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/logging"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/model"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/service"
+	"go.opentelemetry.io/otel"
 
+	"github.com/IBM/sarama"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -53,23 +54,23 @@ func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 // handleMessage processes a single Kafka message and ensures proper tracing and context management.
 func (h *ConsumerGroupHandler) handleMessage(ctx context.Context, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
-	// Log the message details.
 	log.Printf("Processing Kafka message: topic = %s, timestamp = %v, value = %s",
 		message.Topic, message.Timestamp, string(message.Value))
 
-	// Decode the Kafka message into a DebeziumMessage struct.
+	tracer := otel.Tracer("purchase-processor")
+	newCtx, span := tracer.Start(ctx, "handler.handleMessage")
+	defer span.End()
+
 	debMessage, err := h.decodeMessage(message.Value)
 	if err != nil {
 		log.Printf("Failed to decode Debezium message: %v", err)
-		// Mark the message as consumed with an error and return.
 		session.MarkMessage(message, "")
 
 		return err
 	}
 
-	// Check if there's an "after" payload to process.
 	if debMessage.Payload.After != nil {
-		if err := h.processPayload(ctx, debMessage.Payload.After); err != nil {
+		if err := h.processPayload(newCtx, debMessage.Payload.After); err != nil {
 			log.Printf("Failed to process 'after' payload: %v", err)
 		}
 	}
