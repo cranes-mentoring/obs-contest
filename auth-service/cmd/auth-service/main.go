@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net"
 	"os"
 	"os/signal"
@@ -13,13 +12,15 @@ import (
 	auth_repo "github.com/cranes-mentoring/obs-contest/auth-service/internal/repository/auth"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/service/auth"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
-const connStr = "postgres://postgres:postgres@localhost:5432/public"
+const connStr = "postgres://postgres:postgres@postgres:5432/public"
 
 func main() {
 	ctx := context.Background()
@@ -37,7 +38,8 @@ func main() {
 	authRepo := auth_repo.NewUserRepository(dbpool)
 	authService := auth.NewUserService(authRepo, logger)
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
+
 	pb.RegisterAuthServiceServer(server, authService)
 
 	reflection.Register(server)
@@ -51,7 +53,7 @@ func main() {
 	signal.Notify(stop, os.Interrupt)
 
 	go func() {
-		log.Printf("Starting gRPC server on port 50051...")
+		logger.Info("Starting gRPC server on port 50051...")
 		if err := server.Serve(listener); err != nil {
 			logger.Fatal("failed to serve", zap.Error(err))
 		}

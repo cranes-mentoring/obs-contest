@@ -1,0 +1,215 @@
+services:
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.52
+    ports:
+      - "6831:6831/udp" # UDP port for Jaeger agent
+      - "16686:16686" # Web UI
+      - "14268:14268" # HTTP port for spans
+    networks:
+      - internal
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - kafka
+      - jaeger
+    command:
+      --config.file=/etc/prometheus/prometheus.yml
+    networks:
+      - internal
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.91.0
+    command: ['--config=/etc/otel-collector.yaml']
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+    volumes:
+      - ./otel-collector.yaml:/etc/otel-collector.yaml
+    depends_on:
+      - jaeger
+    networks:
+      - internal
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: public
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - internal
+
+  mongo1:
+    image: mongo:6.0
+    container_name: mongo1
+    networks:
+      - internal
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    command: >
+      mongod --replSet rs0 --auth --keyFile /etc/mongo-keyfile --bind_ip_all
+    volumes:
+      - .mongo-keyfile/mongo-keyfile:/etc/mongo-keyfile:ro
+
+  mongo2:
+    image: mongo:6.0
+    container_name: mongo2
+    networks:
+      - internal
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    command: >
+      mongod --replSet rs0 --auth --keyFile /etc/mongo-keyfile --bind_ip_all
+    volumes:
+      - .mongo-keyfile/mongo-keyfile:/etc/mongo-keyfile:ro
+
+  mongo3:
+    image: mongo:6.0
+    container_name: mongo3
+    networks:
+      - internal
+    ports:
+      - "27019:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    command: >
+      mongod --replSet rs0 --auth --keyFile /etc/mongo-keyfile --bind_ip_all
+    volumes:
+      - .mongo-keyfile/mongo-keyfile:/etc/mongo-keyfile:ro
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_KRAFT_MODE: "true"  # This enables KRaft mode in Kafka.
+      KAFKA_PROCESS_ROLES: controller,broker  # Kafka acts as both broker and controller.
+      KAFKA_NODE_ID: 1  # A unique ID for this Kafka instance.
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"  # Defines the controller voters.
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LOG_DIRS: /var/lib/kafka/data  # Where Kafka stores its logs.
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"  # Kafka will automatically create topics if needed.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1  # Since we’re running one broker, one replica is enough.
+      KAFKA_LOG_RETENTION_HOURS: 168  # Keep logs for 7 days.
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0  # No delay for consumer rebalancing.
+      CLUSTER_ID: "wfsdofj23019fudso"  # A unique ID for the Kafka cluster.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data:/var/lib/kafka/data  # Store Kafka logs on your local mach
+    networks:
+      - internal
+
+  debezium:
+    image: debezium/connect:3.0.0.Final
+    platform: linux/amd64
+    environment:
+      BOOTSTRAP_SERVERS: "kafka:9092"
+      GROUP_ID: "debezium"
+      CONFIG_STORAGE_TOPIC: "debezium_config"
+      OFFSET_STORAGE_TOPIC: "debezium_offset"
+      STATUS_STORAGE_TOPIC: "debezium_status"
+      KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_REST_ADVERTISED_HOST_NAME: "debezium"
+    depends_on:
+      - kafka
+    ports:
+      - "8083:8083"
+    networks:
+      - internal
+    volumes:
+      - ./debezium-plugins:/kafka/connect/plugins
+
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "18082:8080"
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
+      KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: "kafka:9092"
+    networks:
+      - internal
+    depends_on:
+      - kafka
+      - debezium
+
+  purchase-service:
+    container_name: purchase-service
+    image: purchase-service:latest
+    build:
+      context: ../purchase-service/.
+      dockerfile: Dockerfile
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+      - debezium
+    networks:
+      - internal
+    ports:
+      - "8080:8080"
+
+  auth-service:
+    container_name: auth-service
+    image: auth-service:latest
+    build:
+      context: ../auth-service/.
+      dockerfile: Dockerfile
+    networks:
+      - internal
+    ports:
+      - "50051:50051"
+    depends_on:
+      - otel-collector
+
+  purchase-processor:
+    container_name: purchase-processor
+    image: purchase-processor:latest
+    build:
+      context: ../purchase-processor/.
+      dockerfile: Dockerfile
+    networks:
+      - internal
+    ports:
+      - "8084:8084"
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      - kafka
+      - debezium
+      - otel-collector
+
+volumes:
+  postgres-data:
+  mongo-data:
+  otel-collector-config:
+    driver: local
+  kafka-data:
+
+networks:
+  internal:
+    driver: bridge

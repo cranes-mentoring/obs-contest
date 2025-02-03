@@ -1,0 +1,65 @@
+openapi: 3.0.0
+info:
+  title: Purchase Service API
+  version: 1.0.0
+paths:
+  /api/v1/purchases:
+    post:
+      summary: Buy coins
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseRequest'
+      responses:
+        '200':
+          description: Successful purchase
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchaseResponse'
+        '400':
+          description: Invalid request body
+        '500':
+          description: Internal server error
+components:
+  schemas:
+    PurchaseRequest:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        currency:
+          type: string
+        payment_method:
+          type: string
+        card_holder_name:
+          type: string
+        card_number:
+          type: string
+        card_expiry:
+          type: string
+        card_cvc:
+          type: string
+        billing_address:
+          type: string
+        transaction_date:
+          type: string
+          format: date-time
+    PurchaseResponse:
+      type: object
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        message:
+          type: string

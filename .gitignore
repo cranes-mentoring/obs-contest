@@ -23,3 +23,6 @@ go.work.sum
 
 # env file
 .env
+
+/obs-infra/.mongo-keyfile
+/obs-infra/debezium-plugins/debezium-mongodb-connector-1.5.0.Final.jar

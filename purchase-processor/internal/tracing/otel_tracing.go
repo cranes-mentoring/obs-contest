@@ -26,7 +26,7 @@ func InitTracer(ctx context.Context) func() {
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNameKey.String("auth-service"), // todo: to config
+			semconv.ServiceNameKey.String("purchase-processor"),
 			semconv.ServiceVersionKey.String("1.0.0"),
 			semconv.DeploymentEnvironmentKey.String("stg"),
 		),
@@ -35,12 +35,17 @@ func InitTracer(ctx context.Context) func() {
 		log.Fatalf("failed to create resource: %v", err)
 	}
 
+	bsp := trace.NewBatchSpanProcessor(exp)
 	tp := trace.NewTracerProvider(
-		trace.WithBatcher(exp),
 		trace.WithResource(res),
+		trace.WithBatcher(exp),
+		trace.WithSpanProcessor(bsp),
 	)
 
 	otel.SetTracerProvider(tp)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		log.Printf("OpenTelemetry error: %v", err)
+	}))
 
 	return func() {
 		err := tp.Shutdown(ctx)
