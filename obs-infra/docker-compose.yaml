@@ -195,7 +195,7 @@ services:
     networks:
       - internal
     ports:
-      - "48080:48080"
+      - "8084:8084"
     environment:
       KAFKA_BROKERS: kafka:9092
     depends_on:

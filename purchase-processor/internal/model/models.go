@@ -72,15 +72,12 @@ type Purchase struct {
 	Amount         float64 `json:"amount"`
 	PaymentMethod  string  `json:"payment_method"`
 	CardExpiry     string  `json:"card_expiry"`
-	CreatedAt      int64   `json:"created_at"`
 	Currency       string  `json:"currency"`
 	CardHolderName string  `json:"card_holder_name"`
 	CardNumber     string  `json:"card_number"`
-	UpdatedAt      int64   `json:"updated_at"`
 	UserID         string  `json:"user_id"`
 	Username       string  `json:"username"`
 	CardCVC        string  `json:"card_cvc"`
-	TransactionAt  int64   `json:"transaction_at"`
 	TraceID        string  `json:"trace_id"`
 	BillingAddress string  `json:"billing_address"`
 }

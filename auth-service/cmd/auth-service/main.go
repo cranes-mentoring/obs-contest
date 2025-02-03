@@ -9,10 +9,11 @@ import (
 	pb "github.com/cranes-mentoring/obs-contest/auth-service/generated/auth-service/proto"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/db"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/logging"
-	"github.com/cranes-mentoring/obs-contest/auth-service/internal/middleware"
 	auth_repo "github.com/cranes-mentoring/obs-contest/auth-service/internal/repository/auth"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/service/auth"
 	"github.com/cranes-mentoring/obs-contest/auth-service/internal/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
@@ -37,9 +38,7 @@ func main() {
 	authRepo := auth_repo.NewUserRepository(dbpool)
 	authService := auth.NewUserService(authRepo, logger)
 
-	server := grpc.NewServer(
-		grpc.UnaryInterceptor(middleware.ServerInterceptor()),
-	)
+	server := grpc.NewServer(grpc.StatsHandler(otelgrpc.NewServerHandler()))
 
 	pb.RegisterAuthServiceServer(server, authService)
 

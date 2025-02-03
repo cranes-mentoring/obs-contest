@@ -6,81 +6,110 @@ import (
 	"log"
 
 	"github.com/IBM/sarama"
-	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/middleware"
+	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/logging"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/model"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/service"
+
 	"github.com/mitchellh/mapstructure"
 )
 
+// ConsumerGroupHandler handles Kafka messages for the purchase processor.
 type ConsumerGroupHandler struct {
 	authService service.UserService
 }
 
+// NewConsumerGroupHandler creates an instance of ConsumerGroupHandler.
 func NewConsumerGroupHandler(authService service.UserService) *ConsumerGroupHandler {
 	return &ConsumerGroupHandler{authService: authService}
 }
 
-func (h *ConsumerGroupHandler) Setup(sarama.ConsumerGroupSession) error {
+// Setup runs any initialization logic (optional).
+func (h *ConsumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error {
 	return nil
 }
 
-func (h *ConsumerGroupHandler) Cleanup(sarama.ConsumerGroupSession) error {
+// Cleanup runs any cleanup logic (optional).
+func (h *ConsumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error {
 	return nil
 }
 
+// ConsumeClaim processes messages from a Kafka consumer group claim.
 func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	// Use the context provided by the Kafka consumer session.
 	ctx := session.Context()
 
+	// Add trace context to the logger for logging spans.
+	logging.AddTraceContextToLogger(ctx)
+
+	// Use the existing trace propagation via the context for each message in the claim.
 	for message := range claim.Messages() {
-		log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s", string(message.Value), message.Timestamp, message.Topic)
-
-		var debMessage model.DebeziumMessage
-		err := json.Unmarshal(message.Value, &debMessage)
-		if err != nil {
-			log.Printf("Error unmarshaling message: %v", err)
-			session.MarkMessage(message, "")
-			continue
+		if err := h.handleMessage(ctx, session, message); err != nil {
+			log.Printf("Error processing Kafka message: %v", err)
 		}
+	}
 
-		if debMessage.Payload.After != nil {
-			var afterDoc map[string]interface{}
+	return nil
+}
 
-			err := json.Unmarshal([]byte(*debMessage.Payload.After), &afterDoc)
-			if err != nil {
-				log.Printf("Error unmarshaling 'after' field: %v", err)
-			} else {
-				log.Printf("payload before as: %v", afterDoc)
+// handleMessage processes a single Kafka message and ensures proper tracing and context management.
+func (h *ConsumerGroupHandler) handleMessage(ctx context.Context, session sarama.ConsumerGroupSession, message *sarama.ConsumerMessage) error {
+	// Log the message details.
+	log.Printf("Processing Kafka message: topic = %s, timestamp = %v, value = %s",
+		message.Topic, message.Timestamp, string(message.Value))
 
-				var purchase model.Purchase
-
-				payloadBytes, err := json.Marshal(afterDoc)
-				if err != nil {
-					log.Printf("Error marshaling 'after' payloadBytes: %v", err)
-				}
-
-				err = json.Unmarshal(payloadBytes, &purchase)
-				if err != nil {
-					log.Printf("Error unmarshaling 'after' payloadBytes to json: %v", err)
-				}
-
-				err = mapstructure.Decode(afterDoc, &purchase)
-				if err != nil {
-					log.Printf("Error decoding 'after' json to document: %v", err)
-				} else {
-					log.Printf("Processed Purchase: %+v", purchase)
-				}
-
-				traceCtx := context.WithValue(ctx, middleware.TraceIDKey, purchase.TraceID)
-				log.Printf("Trace ID: %s", purchase.TraceID)
-
-				_, err = h.authService.FindUser(traceCtx, purchase.Username)
-				if err != nil {
-					log.Printf("Error finding user: %v", err)
-				}
-			}
-		}
-
+	// Decode the Kafka message into a DebeziumMessage struct.
+	debMessage, err := h.decodeMessage(message.Value)
+	if err != nil {
+		log.Printf("Failed to decode Debezium message: %v", err)
+		// Mark the message as consumed with an error and return.
 		session.MarkMessage(message, "")
+
+		return err
+	}
+
+	// Check if there's an "after" payload to process.
+	if debMessage.Payload.After != nil {
+		if err := h.processPayload(ctx, debMessage.Payload.After); err != nil {
+			log.Printf("Failed to process 'after' payload: %v", err)
+		}
+	}
+
+	session.MarkMessage(message, "")
+
+	return nil
+}
+
+// decodeMessage decodes a Kafka message into a DebeziumMessage structure.
+func (h *ConsumerGroupHandler) decodeMessage(value []byte) (*model.DebeziumMessage, error) {
+	var debMessage model.DebeziumMessage
+	if err := json.Unmarshal(value, &debMessage); err != nil {
+
+		return nil, err
+	}
+
+	return &debMessage, nil
+}
+
+// processPayload handles the actual processing of the "after" field from a message payload.
+func (h *ConsumerGroupHandler) processPayload(ctx context.Context, afterPayload *string) error {
+	var afterDoc map[string]interface{}
+	if err := json.Unmarshal([]byte(*afterPayload), &afterDoc); err != nil {
+		log.Printf("Failed to unmarshal 'after' payload: %v", err)
+
+		return err
+	}
+
+	var purchase model.Purchase
+	if err := mapstructure.Decode(afterDoc, &purchase); err != nil {
+		log.Printf("Failed to map 'after' payload to Purchase struct: %v", err)
+
+		return err
+	}
+
+	if _, err := h.authService.FindUser(ctx, purchase.Username); err != nil {
+		log.Printf("Failed to find user: %v", err)
+
+		return err
 	}
 
 	return nil

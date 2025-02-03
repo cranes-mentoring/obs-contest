@@ -8,11 +8,11 @@ scrape_configs:
 
   - job_name: 'jaeger'
     static_configs:
-      - targets: ['jaeger:16686']
+      - targets: ['jaeger:14268']
 
   - job_name: 'otel-collector'
     static_configs:
-      - targets: ['otel-collector:16686']
+      - targets: ['otel-collector:8082']
 
   - job_name: 'auth-service'
     static_configs:
@@ -24,4 +24,4 @@ scrape_configs:
 
   - job_name: 'purchase-service'
     static_configs:
-      - targets: ['purchase-service:8082']
+      - targets: ['purchase-service:56307']
