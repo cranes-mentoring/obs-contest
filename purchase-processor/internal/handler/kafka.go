@@ -5,13 +5,12 @@ import (
 	"encoding/json"
 	"log"
 
+	"github.com/IBM/sarama"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/logging"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/model"
 	"github.com/cranes-mentoring/obs-contest/purchase-processor/internal/service"
-	"go.opentelemetry.io/otel"
-
-	"github.com/IBM/sarama"
 	"github.com/mitchellh/mapstructure"
+	"go.opentelemetry.io/otel"
 )
 
 // ConsumerGroupHandler handles Kafka messages for the purchase processor.
