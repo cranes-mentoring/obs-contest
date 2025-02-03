@@ -43,6 +43,22 @@ func main() {
 
 	defer conn.Close()
 
+	// init layers
+	authServicePb := pb.NewAuthServiceClient(conn)
+	authService := service.NewUserService(authServicePb)
+	handler := purchase_handler.NewConsumerGroupHandler(*authService)
+
+	server := &http.Server{
+		Addr: ":8084",
+	}
+
+	go func() {
+		logger.Info("Server running.")
+		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			logger.Fatal("HTTP server ListenAndServe error", zap.Error(err))
+		}
+	}()
+
 	brokers := strings.Split(getEnv("KAFKA_BROKERS", "kafka:9092"), ",")
 	topic := getEnv("KAFKA_TOPIC", "purchases")
 	group := getEnv("KAFKA_GROUP", "purchase-processor-group")
@@ -62,11 +78,6 @@ func main() {
 		}
 	}()
 
-	// init layers
-	authServicePb := pb.NewAuthServiceClient(conn)
-	authService := service.NewUserService(authServicePb)
-	handler := purchase_handler.NewConsumerGroupHandler(*authService)
-
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		defer cancel()
@@ -78,17 +89,6 @@ func main() {
 	}()
 
 	logger.Info("Started consumer for topic", zap.String("topic", topic))
-
-	server := &http.Server{
-		Addr: ":8084",
-	}
-
-	go func() {
-		logger.Info("Server running.")
-		if err := server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			logger.Fatal("HTTP server ListenAndServe error", zap.Error(err))
-		}
-	}()
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)

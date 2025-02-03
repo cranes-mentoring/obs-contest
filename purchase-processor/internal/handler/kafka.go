@@ -36,14 +36,11 @@ func (h *ConsumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error {
 
 // ConsumeClaim processes messages from a Kafka consumer group claim.
 func (h *ConsumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	// Use the context provided by the Kafka consumer session.
-	ctx := session.Context()
-
-	// Add trace context to the logger for logging spans.
-	logging.AddTraceContextToLogger(ctx)
-
 	// Use the existing trace propagation via the context for each message in the claim.
 	for message := range claim.Messages() {
+		ctx := session.Context()
+		logging.AddTraceContextToLogger(ctx)
+
 		if err := h.handleMessage(ctx, session, message); err != nil {
 			log.Printf("Error processing Kafka message: %v", err)
 		}
